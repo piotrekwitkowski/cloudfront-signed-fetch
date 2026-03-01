@@ -1,38 +1,60 @@
 # cloudfront-signed-fetch
 
+A drop-in `fetch()` wrapper that computes the `x-amz-content-sha256` header required for POST/PUT/PATCH requests through CloudFront OAC to Lambda Function URLs.
+
 ## Problem
 
-When CloudFront uses OAC (Origin Access Control) to sign requests to Lambda Function URLs with SigV4, it does **not** compute the SHA-256 hash of the request body for POST/PUT requests. Lambda Function URLs don't support unsigned payloads — they require the `x-amz-content-sha256` header to contain the actual hash of the body.
+When CloudFront uses OAC (Origin Access Control) to sign requests to Lambda Function URLs with SigV4, it does **not** compute the SHA-256 hash of the request body. Lambda Function URLs don't support unsigned payloads — they require the `x-amz-content-sha256` header to contain the actual hash of the body.
 
 From the [AWS documentation](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html):
 
 > If you use `PUT` or `POST` methods with your Lambda function URL, your users must compute the SHA256 of the body and include the payload hash value of the request body in the `x-amz-content-sha256` header when sending the request to CloudFront. Lambda doesn't support unsigned payloads.
 
-This means **POST/PUT requests will fail** unless the client computes and sends this header. CloudFront passes it through to the origin, but the responsibility is entirely on the caller.
+Without this header, **POST/PUT requests will fail**. CloudFront passes the header through to the origin, but the responsibility is entirely on the caller.
 
-## Why it matters
+Common workarounds involve computing the hash server-side (e.g., Lambda@Edge on the origin request), but Lambda@Edge truncates request bodies at ~1 MB while Lambda Function URLs accept up to 6 MB — creating a gap where larger payloads cannot be hashed at the edge.
 
-Without the `x-amz-content-sha256` header, any POST/PUT request through CloudFront OAC to a Lambda Function URL will be rejected by Lambda. This isn't an optional integrity check — it's a hard requirement for the request to succeed.
+## Install
 
-Common workarounds involve computing the hash server-side (e.g., Lambda@Edge on the origin request), but:
+```bash
+npm install cloudfront-signed-fetch
+```
 
-- Lambda@Edge truncates request bodies at ~1 MB
-- Lambda Function URLs accept up to 6 MB
-- This creates a gap where payloads between 1–6 MB cannot be hashed by Lambda@Edge
+## Usage
 
-The only reliable solution is to compute the hash on the client before sending the request.
+```typescript
+import { signedFetch } from "cloudfront-signed-fetch";
 
-## Proposed solution
+// Use exactly like fetch() — the header is added automatically for write methods
+const res = await signedFetch("https://d111111abcdef8.cloudfront.net/api", {
+  method: "POST",
+  body: JSON.stringify({ hello: "world" }),
+  headers: { "Content-Type": "application/json" },
+});
+```
 
-A lightweight browser-compatible wrapper around the Fetch API that:
+## Behavior
 
-1. Computes the SHA-256 hash of the request body using the Web Crypto API (`crypto.subtle.digest`)
-2. Attaches it as the `x-amz-content-sha256` header on every request
-3. Maintains the same API surface as `fetch()` — drop-in replacement
+- **POST, PUT, PATCH** — computes SHA-256 of the body (or empty hash if no body) and sets `x-amz-content-sha256`
+- **GET, HEAD, DELETE** — no header added, request passes through unchanged
+- All `BodyInit` types are supported: `string`, `ArrayBuffer`, `Blob`, `FormData`, `URLSearchParams`, `ReadableStream`, and typed arrays
+- Uses the Web Crypto API (`crypto.subtle.digest`) — works in all modern browsers and Web Workers
 
-## Constraints
+## Notes
 
-- Must work in browsers (no Node.js `crypto` module)
-- Must handle all body types (`string`, `ArrayBuffer`, `ReadableStream`, `FormData`, etc.)
-- The `x-amz-content-sha256` header is non-standard, so it triggers CORS preflights — the origin must include it in `Access-Control-Allow-Headers`
-- This does **not** replace SigV4 signing — CloudFront OAC handles that. This library only provides the payload hash that Lambda requires
+- This does **not** replace SigV4 signing — CloudFront OAC handles that. This library only provides the payload hash that Lambda requires.
+- When your frontend is served from the same CloudFront distribution as the API (recommended), requests are same-origin and the custom header does not trigger CORS preflights.
+- If making cross-origin requests, the origin must include `x-amz-content-sha256` in `Access-Control-Allow-Headers`.
+
+## E2E testing
+
+The `e2e/` directory contains a CDK stack and Playwright tests that validate the library against a real CloudFront + Lambda Function URL deployment.
+
+```bash
+npm run e2e:deploy   # deploy CDK stack (CloudFront + Lambda + OAC)
+npm run e2e:test     # run Playwright tests against the distribution
+npm run e2e:destroy  # tear down the stack
+npm run e2e          # all three in sequence
+```
+
+The test page is served directly from a CloudFront Function — no S3 bucket needed. The built `signedFetch` bundle is inlined in the HTML.
