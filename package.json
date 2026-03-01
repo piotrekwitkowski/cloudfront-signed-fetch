@@ -1,6 +1,6 @@
 {
-  "name": "cloudfront-signed-fetch",
-  "version": "0.1.0",
+  "name": "@piwit/cloudfront-signed-fetch",
+  "version": "1.0.0",
   "description": "Fetch wrapper that adds x-amz-content-sha256 header for CloudFront + Lambda Function URL payload integrity",
   "type": "module",
   "main": "./dist/index.cjs",
