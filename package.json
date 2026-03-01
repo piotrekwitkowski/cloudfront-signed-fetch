@@ -1,0 +1,41 @@
+{
+  "name": "cloudfront-signed-fetch",
+  "version": "0.1.0",
+  "description": "Fetch wrapper that adds x-amz-content-sha256 header for CloudFront + Lambda Function URL payload integrity",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --run",
+    "e2e:deploy": "npm run build && cd e2e && npx cdk deploy --require-approval never --outputs-file cdk-outputs.json",
+    "e2e:test": "E2E_URL=$(node -e \"const o=require('./e2e/cdk-outputs.json');console.log(o.CloudfrontSignedFetchE2e.DistributionUrl)\") npx playwright test",
+    "e2e:destroy": "cd e2e && npx cdk destroy --force",
+    "e2e": "npm run e2e:deploy && npm run e2e:test; npm run e2e:destroy"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/aws-lambda": "^8.10.161",
+    "@types/node": "^25.3.3",
+    "aws-cdk-lib": "^2.240.0",
+    "constructs": "^10.5.1",
+    "esbuild": "^0.27.3",
+    "tsup": "^8.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.18"
+  },
+  "license": "MIT"
+}
