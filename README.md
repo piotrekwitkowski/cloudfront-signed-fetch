@@ -10,20 +10,20 @@ From the [AWS documentation](https://docs.aws.amazon.com/AmazonCloudFront/latest
 
 > If you use `PUT` or `POST` methods with your Lambda function URL, your users must compute the SHA256 of the body and include the payload hash value of the request body in the `x-amz-content-sha256` header when sending the request to CloudFront. Lambda doesn't support unsigned payloads.
 
-Without this header, **POST/PUT requests will fail**. CloudFront passes the header through to the origin, but the responsibility is entirely on the caller.
+Without this header, **POST/PUT/PATCH requests will fail**. CloudFront passes the header through to the origin, but the responsibility is entirely on the caller.
 
 Common workarounds involve computing the hash server-side (e.g., Lambda@Edge on the origin request), but Lambda@Edge truncates request bodies at ~1 MB while Lambda Function URLs accept up to 6 MB — creating a gap where larger payloads cannot be hashed at the edge.
 
 ## Install
 
 ```bash
-npm install cloudfront-signed-fetch
+npm install @piwit/cloudfront-signed-fetch
 ```
 
 ## Usage
 
 ```typescript
-import { signedFetch } from "cloudfront-signed-fetch";
+import { signedFetch } from "@piwit/cloudfront-signed-fetch";
 
 // Use exactly like fetch() — the header is added automatically for write methods
 const res = await signedFetch("https://d111111abcdef8.cloudfront.net/api", {
