@@ -3,3 +3,4 @@ dist
 cdk.out
 test-results
 e2e/cdk-outputs.json
+.DS_Store
