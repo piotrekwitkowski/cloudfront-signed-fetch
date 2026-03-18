@@ -9,12 +9,17 @@ export const handler = async (event: LambdaFunctionURLEvent): Promise<LambdaFunc
   const receivedHash = event.headers["x-amz-content-sha256"] || "";
   const computedHash = createHash("sha256").update(rawBody).digest("hex");
 
+  // Echo all received headers so tests can inspect what Lambda saw after OAC signing.
+  // In particular, the `authorization` header will contain the OAC SigV4 signature,
+  // proving that CloudFront OAC overwrites any client-provided Authorization value.
   const result = {
     method,
     bodyLength: rawBody.length,
+    rawBody: rawBody.toString("utf-8"),
     receivedHash,
     computedHash,
     hashMatch: receivedHash === computedHash,
+    receivedHeaders: event.headers,
   };
 
   return {
