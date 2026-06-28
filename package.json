@@ -28,7 +28,7 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/aws-lambda": "^8.10.161",
-    "@types/node": "^25.3.3",
+    "@types/node": "^26.0.1",
     "aws-cdk-lib": "^2.240.0",
     "constructs": "^10.5.1",
     "esbuild": "^0.28.0",
